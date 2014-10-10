@@ -4,13 +4,14 @@
 #include <string.h>
 
 #include <json/json.h>
-
 #include <curl/curl.h>
+
 //Every exchange has its own names  prices, volume and time, specify them in the array of strings
 //First element is reserved for the root element i.e. "ticker", "btc-usd" etc
 //If there is no root just leave empty
-char bitstamp_lables[6][10] = {"", "low", "high", "last", "volume", "timestamp"};
-char btce_lables[6][10] = {"btc_usd","low", "high", "last", "vol_cur", "updated"};
+char bitstamp_lables[][20] = {"", "low", "high", "last", "volume", "timestamp"};
+char btce_lables[][20] = {"btc_usd","low", "high", "last", "vol_cur", "updated"};
+char bitfinex_lables[][20] = {"","low", "high", "last_price", "volume", "timestamp"};
 int force_exit = 0;
 
 struct Ticker{
@@ -73,7 +74,7 @@ void getTicker(char* url, struct MemoryStruct *chunk){
 //Pass memory where the response is stored, it will be parsed within this function
 //Pass ticker to get poluted with extracted values
 //Pass labels for a specific exchange
-void parseTicker(const struct MemoryStruct *response, Ticker *ticker, const char exchangeLabels[6][10]){
+void parseTicker(const struct MemoryStruct *response, Ticker *ticker, const char exchangeLabels[][20]){
     json_object *complete_query, *sub_query;
     complete_query = json_tokener_parse(response->memory);
     
@@ -106,9 +107,11 @@ int main(int argc, char **argv){
     struct MemoryStruct response;
     Ticker bitstampTicker;
     Ticker btceTicker;
+    Ticker bitfinexTicker;
     unsigned long lastTick1 = 0;
     unsigned long lastTick2 = 0;
-
+    unsigned long lastTick3 = 0;
+    
     do{
         getTicker("https://btc-e.com/api/3/ticker/btc_usd", &response);
         parseTicker(&response, &btceTicker, btce_lables);
@@ -121,6 +124,13 @@ int main(int argc, char **argv){
         if(lastTick2 != bitstampTicker.time) //To avoid printing the same data twice, make sure we got new data
             printTicker("Bitstamp", &bitstampTicker);
         lastTick2 = bitstampTicker.time;
+        
+        getTicker("https://api.bitfinex.com/v1/pubticker/btcusd", &response);
+        parseTicker(&response, &bitfinexTicker, bitfinex_lables);
+        if(lastTick2 != bitfinexTicker.time) //To avoid printing the same data twice, make sure we got new data
+            printTicker("Bitfinex", &bitfinexTicker);
+        lastTick3 = bitfinexTicker.time;
+    
     }while(!force_exit);
 
     free(response.memory);
