@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <json/json.h>
 #include <curl/curl.h>
@@ -21,10 +22,16 @@ struct Ticker{
     double high;
     double last;
     double vol;
-    unsigned long time;
+    unsigned long server_time;
+    unsigned long local_time;
     Ticker *next; // is used to create a list
     Ticker *previous;
 };
+
+
+time_t rawtime;
+struct tm * timeinfo;
+
 
 //---------------------------------------------------------------------------------------------------------
 //Structure that stores
@@ -89,20 +96,21 @@ void parseTicker(const struct MemoryStruct *response, Ticker *ticker, const char
     if((sub_query = json_object_object_get(complete_query, exchangeLabels[0])) == NULL)
         sub_query = complete_query;
     
-    
+    time ( &rawtime ); //get current time on a local machine
     ticker->low =  json_object_get_double (  json_object_object_get(sub_query, exchangeLabels[1])  );
     ticker->high = json_object_get_double (  json_object_object_get(sub_query, exchangeLabels[2])  );
     ticker->last = json_object_get_double (  json_object_object_get(sub_query, exchangeLabels[3])  );
     ticker->vol =  json_object_get_double (  json_object_object_get(sub_query, exchangeLabels[4])  );
-    ticker->time =  json_object_get_int64(  json_object_object_get(sub_query,  exchangeLabels[5])  );
+    ticker->server_time =  json_object_get_int64(  json_object_object_get(sub_query,  exchangeLabels[5] )  );
+    ticker->local_time = rawtime;
     
     json_object_put(sub_query);
     json_object_put(complete_query);
 }
 //---------------------------------------------------------------------------------------------------------
 void printTicker(const char exName[], const Ticker *ticker){
-    printf("%s\t|\tlow: %6.2lf,\t\thigh: %6.2lf,\t\tlast: %6.2lf,\t\tvolume: %6.2lf,\t\ttime: %6.2ld\n", exName,
-           ticker->low, ticker->high, ticker->last, ticker->vol, ticker->time);
+    printf("%s\t|low: %6.2lf,\t\thigh: %6.2lf,\t\tlast: %6.2lf,\t\tvolume: %6.2lf,\t\tstime: %6.2ld,\t\tlime: %6.2ld\n", exName,
+           ticker->low, ticker->high, ticker->last, ticker->vol, ticker->server_time, ticker->local_time);
 }
 //---------------------------------------------------------------------------------------------------------
 void sighandler(int sig){
@@ -113,7 +121,7 @@ struct Ticker *allocate_ticker_record(){
     return (struct Ticker *)calloc(1, sizeof(struct Ticker));
 }
 //---------------------------------------------------------------------------------------------------------
-#define TICKER_COMPARATOR(e1, e2) (e1->time - e2->time)
+#define TICKER_COMPARATOR(e1, e2) (e1->server_time - e2->server_time)
 #define MAX_NUM_ELEMENTS 3
 //returns pointer to the last element
 //if no news data is received, retures NULL
@@ -137,8 +145,17 @@ Ticker  *update(char *url, Ticker  *tickerList, Ticker  *head, char labels[][20]
         return itr;
     else
         return NULL;
-
 }
+//-----------------------------------------------------------------------------------------
+void releaseList(Ticker  *head){
+    Ticker *itr = head;
+    while (itr != NULL) {
+        head = head->previous;
+        free(itr);
+        itr = head;
+    }
+}
+
 
 int main(int argc, char **argv){
     signal(SIGINT, sighandler);
@@ -153,9 +170,12 @@ int main(int argc, char **argv){
             *bitstampTickerList_head    = bitstampTickerList,
             *bitfinexTickerList_head    = bitfinexTickerList,
             *korbitTickerList_head      = korbitTickerList;
+    
+
+    time ( &rawtime );
+    //timeinfo = localtime ( &rawtime );
 
     do{
-
         element_ptr = update("https://btc-e.com/api/3/ticker/btc_usd", btceTickerList, btceTickerList_head, btce_lables);
         if(element_ptr != NULL) //To avoid printing the same data twice, make sure we got new data
             printTicker("BTC-E\t", element_ptr);
@@ -167,14 +187,18 @@ int main(int argc, char **argv){
         element_ptr = update("https://api.bitfinex.com/v1/pubticker/btcusd", bitfinexTickerList, bitfinexTickerList_head, bitfinex_lables);
         if(element_ptr != NULL) //To avoid printing the same data twice, make sure we got new data
             printTicker("Bitfinex", element_ptr);
-        
-        element_ptr = update("https://api.korbit.co.kr/v1/ticker/detailed", korbitTickerList, korbitTickerList_head, korbit_lables);
-        if(element_ptr != NULL) //To avoid printing the same data twice, make sure we got new data
-            printTicker("Korbit\t", element_ptr);
+
+//        element_ptr = update("https://api.korbit.co.kr/v1/ticker/detailed", korbitTickerList, korbitTickerList_head, korbit_lables);
+//        if(element_ptr != NULL) //To avoid printing the same data twice, make sure we got new data
+//            printTicker("Korbit\t", element_ptr);
   
     }while(!force_exit);
 
-    //here we need to release memory allocated for lists
+    //elease memory allocated by lists
+    releaseList(btceTickerList);
+    releaseList(bitstampTickerList_head);
+    releaseList(bitfinexTickerList_head);
+    releaseList(korbitTickerList_head);
     
     return 0;
 }
