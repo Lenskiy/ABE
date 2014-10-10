@@ -12,7 +12,7 @@
 char bitstamp_lables[][20] = {"", "low", "high", "last", "volume", "timestamp"};
 char btce_lables[][20] = {"btc_usd","low", "high", "last", "vol_cur", "updated"};
 char bitfinex_lables[][20] = {"","low", "high", "last_price", "volume", "timestamp"};
-char korbit_lables[][20] = {"", "", "", "last", "", "timestamp"};
+char korbit_lables[][20] = {"", "low", "high", "last", "volume", "timestamp"};
 int force_exit = 0;
 
 struct Ticker{
@@ -95,7 +95,7 @@ void parseTicker(const struct MemoryStruct *response, Ticker *ticker, const char
 }
 
 void printTicker(const char exName[], const Ticker *ticker){
-    printf("%s\t|\t\t\tlow: %6.2lf,\thigh: %6.2lf,\tlast: %6.2lf,\tvolume: %6.2lf,\ttime: %6.2ld\n", exName,
+    printf("%s\t|\tlow: %6.2lf,\t\thigh: %6.2lf,\t\tlast: %6.2lf,\t\tvolume: %6.2lf,\t\ttime: %6.2ld\n", exName,
            ticker->low, ticker->high, ticker->last, ticker->vol, ticker->time);
 }
 
@@ -134,7 +134,7 @@ int main(int argc, char **argv){
             printTicker("Bitfinex", &bitfinexTicker);
         lastTick3 = bitfinexTicker.time;
         
-        getTicker("https://api.korbit.co.kr/v1/ticker", &response);
+        getTicker("https://api.korbit.co.kr/v1/ticker/detailed", &response);
         parseTicker(&response, &korbitTicker, korbit_lables);
         if(lastTick4 != korbitTicker.time) //To avoid printing the same data twice, make sure we got new data
             printTicker("Korbit\t", &korbitTicker);
