@@ -12,6 +12,7 @@
 char bitstamp_lables[][20] = {"", "low", "high", "last", "volume", "timestamp"};
 char btce_lables[][20] = {"btc_usd","low", "high", "last", "vol_cur", "updated"};
 char bitfinex_lables[][20] = {"","low", "high", "last_price", "volume", "timestamp"};
+char korbit_lables[][20] = {"", "", "", "last", "", "timestamp"};
 int force_exit = 0;
 
 struct Ticker{
@@ -94,7 +95,7 @@ void parseTicker(const struct MemoryStruct *response, Ticker *ticker, const char
 }
 
 void printTicker(const char exName[], const Ticker *ticker){
-    printf("%s\t|\t\t\tlow: %4.2lf,\thigh: %4.2lf,\tlast: %4.2lf,\tvolume: %4.2lf,\ttime: %4.2ld\n", exName,
+    printf("%s\t|\t\t\tlow: %6.2lf,\thigh: %6.2lf,\tlast: %6.2lf,\tvolume: %6.2lf,\ttime: %6.2ld\n", exName,
            ticker->low, ticker->high, ticker->last, ticker->vol, ticker->time);
 }
 
@@ -108,9 +109,11 @@ int main(int argc, char **argv){
     Ticker bitstampTicker;
     Ticker btceTicker;
     Ticker bitfinexTicker;
+    Ticker korbitTicker;
     unsigned long lastTick1 = 0;
     unsigned long lastTick2 = 0;
     unsigned long lastTick3 = 0;
+    unsigned long lastTick4 = 0;
     
     do{
         getTicker("https://btc-e.com/api/3/ticker/btc_usd", &response);
@@ -127,9 +130,15 @@ int main(int argc, char **argv){
         
         getTicker("https://api.bitfinex.com/v1/pubticker/btcusd", &response);
         parseTicker(&response, &bitfinexTicker, bitfinex_lables);
-        if(lastTick2 != bitfinexTicker.time) //To avoid printing the same data twice, make sure we got new data
+        if(lastTick3 != bitfinexTicker.time) //To avoid printing the same data twice, make sure we got new data
             printTicker("Bitfinex", &bitfinexTicker);
         lastTick3 = bitfinexTicker.time;
+        
+        getTicker("https://api.korbit.co.kr/v1/ticker", &response);
+        parseTicker(&response, &korbitTicker, korbit_lables);
+        if(lastTick4 != korbitTicker.time) //To avoid printing the same data twice, make sure we got new data
+            printTicker("Korbit\t", &korbitTicker);
+        lastTick4 = korbitTicker.time;
     
     }while(!force_exit);
 
@@ -137,6 +146,8 @@ int main(int argc, char **argv){
     
     return 0;
 }
+
+
 
 
 
