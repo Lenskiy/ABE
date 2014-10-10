@@ -3,11 +3,6 @@
 #include <stddef.h>
 #include <string.h>
 
-#include <unistd.h>
-#include <getopt.h>
-#include <stdarg.h>
-#include <stdlib.h>
-
 #include <json/json.h>
 
 #include <curl/curl.h>
